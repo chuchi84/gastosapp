@@ -5542,14 +5542,26 @@ function renderDashboardInteranual(ym){
 
 // ── Google Sign-In ──────────────────────────────────────
 function initGoogleAuth() {
-  if(!GOOGLE_CLIENT_ID) return; // local mode
+  if(!GOOGLE_CLIENT_ID) return;
   google.accounts.id.initialize({
     client_id: GOOGLE_CLIENT_ID,
     callback: handleGoogleToken,
-    auto_select: true,
+    auto_select: false,
+    use_fedcm_for_prompt: false,
   });
-  // Try silent sign-in first
-  google.accounts.id.prompt();
+  // Render explicit sign-in button
+  const btnDiv = document.getElementById('g_id_signin');
+  if(btnDiv) {
+    google.accounts.id.renderButton(btnDiv, {
+      type: 'standard',
+      shape: 'pill',
+      theme: 'outline',
+      text: 'signin_with',
+      size: 'large',
+      locale: 'es',
+      width: 280,
+    });
+  }
 }
 
 function handleGoogleToken(response) {
@@ -7619,15 +7631,10 @@ function cargarDatosEjemplo(){
     <div style="font-size:13px;color:rgba(199,210,254,.6);margin-bottom:32px">
       Control de gastos familiares
     </div>
-    <!-- Google Sign-In button rendered here by GSI -->
-    <div id="g_id_signin"
-      data-type="standard"
-      data-shape="pill"
-      data-theme="outline"
-      data-text="signin_with"
-      data-size="large"
-      data-locale="es"
-      style="display:flex;justify-content:center;margin-bottom:12px">
+    <!-- Google Sign-In button -->
+    <div id="g_id_signin" style="display:flex;justify-content:center;margin-bottom:12px;min-height:44px"></div>
+    <div style="font-size:11px;color:rgba(199,210,254,.4);margin-top:4px">
+      Si el botón no aparece, recarga la página
     </div>
     <div id="login-error" style="display:none;color:#f87171;font-size:12px;
       margin-top:12px;padding:8px;background:rgba(244,63,94,.1);border-radius:6px"></div>
