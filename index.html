@@ -5651,11 +5651,17 @@ async function loadCloudData() {
 function showLoginScreen() {
   const el = document.getElementById('login-overlay');
   if(el) el.style.display = 'flex';
+  // Hide main app while not logged in
+  const app = document.querySelector('.app');
+  if(app) app.style.visibility = 'hidden';
 }
 
 function hideLoginScreen() {
   const el = document.getElementById('login-overlay');
   if(el) el.style.display = 'none';
+  // Show main app
+  const app = document.querySelector('.app');
+  if(app) app.style.visibility = 'visible';
 }
 
 function showLoginError(msg) {
@@ -7410,16 +7416,18 @@ function cargarDatosEjemplo(){
   if(savedAppName){const logo=document.querySelector('.logo h1');if(logo)logo.textContent=savedAppName;}
 
   if(cloudMode) {
-    // ── MODO CLOUD ──
-    render(); // render vacío mientras carga
+    // ── MODO CLOUD ── mostrar login PRIMERO, no renderizar la app
     renderPaletteGrid();
     showLoginScreen();
-    // Init Google Auth after GSI loads
-    if(typeof google !== 'undefined') {
-      initGoogleAuth();
-    } else {
-      window.addEventListener('load', initGoogleAuth);
+    // Init Google Auth — wait for GSI to load
+    function tryInitAuth() {
+      if(typeof google !== 'undefined' && google.accounts) {
+        initGoogleAuth();
+      } else {
+        setTimeout(tryInitAuth, 200);
+      }
     }
+    tryInitAuth();
   } else {
     // ── MODO LOCAL ──
     if(!localStorage.getItem('ob_done')){
