@@ -5572,13 +5572,13 @@ function handleGoogleToken(response) {
 
 async function cloudLogin(token, payload) {
   try {
-    // Use ID token (not access token) — Apps Script can verify it
     const res = await apiFetchWithToken(token, 'acceso', {});
-    if(!res.ok) return null;
-    // Find user in access list
-    const user = res.lista.find(u => u.email.toLowerCase() === payload.email.toLowerCase());
-    if(!user) return null;
-    return { ...user, token, nombre: payload.name || user.nombre };
+    if(!res.ok){
+      console.error('Backend error:', res.error);
+      return null;
+    }
+    if(!res.user) return null;
+    return { ...res.user, token, nombre: payload.name || res.user.nombre };
   } catch(e) {
     console.error('Login error:', e);
     return null;
