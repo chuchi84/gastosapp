@@ -5543,24 +5543,21 @@ function renderDashboardInteranual(ym){
 // ── Google Sign-In ──────────────────────────────────────
 function initGoogleAuth() {
   if(!GOOGLE_CLIENT_ID) return;
-  google.accounts.id.initialize({
-    client_id: GOOGLE_CLIENT_ID,
-    callback: handleGoogleToken,
-    auto_select: false,
-    use_fedcm_for_prompt: false,
-  });
-  // Render explicit sign-in button
-  const btnDiv = document.getElementById('g_id_signin');
-  if(btnDiv) {
-    google.accounts.id.renderButton(btnDiv, {
-      type: 'standard',
-      shape: 'pill',
-      theme: 'outline',
-      text: 'signin_with',
-      size: 'large',
-      locale: 'es',
-      width: 280,
+  try {
+    google.accounts.id.initialize({
+      client_id: GOOGLE_CLIENT_ID,
+      callback: handleGoogleToken,
+      auto_select: false,
+      use_fedcm_for_prompt: false,
     });
+    google.accounts.id.renderButton(
+      document.getElementById('g_id_signin'),
+      { theme:'filled_blue', size:'large', shape:'pill', text:'signin_with', locale:'es', width:260 }
+    );
+  } catch(e) {
+    console.error('Google Auth error:', e);
+    document.getElementById('login-error').textContent = 'Error iniciando Google Auth: ' + e.message;
+    document.getElementById('login-error').style.display = 'block';
   }
 }
 
@@ -5650,18 +5647,12 @@ async function loadCloudData() {
 // ── UI Helpers ──────────────────────────────────────────
 function showLoginScreen() {
   const el = document.getElementById('login-overlay');
-  if(el) el.style.display = 'flex';
-  // Hide main app while not logged in
-  const app = document.querySelector('.app');
-  if(app) app.style.visibility = 'hidden';
+  if(el) { el.style.display = 'flex'; el.style.flexDirection = 'column'; }
 }
 
 function hideLoginScreen() {
   const el = document.getElementById('login-overlay');
   if(el) el.style.display = 'none';
-  // Show main app
-  const app = document.querySelector('.app');
-  if(app) app.style.visibility = 'visible';
 }
 
 function showLoginError(msg) {
@@ -7416,20 +7407,25 @@ function cargarDatosEjemplo(){
   if(savedAppName){const logo=document.querySelector('.logo h1');if(logo)logo.textContent=savedAppName;}
 
   if(cloudMode) {
-    // ── MODO CLOUD ── mostrar login PRIMERO, no renderizar la app
-    renderPaletteGrid();
+    // CLOUD MODE: show login first
     showLoginScreen();
-    // Init Google Auth — wait for GSI to load
+    // Wait for GSI library then init
+    let authTries = 0;
     function tryInitAuth() {
-      if(typeof google !== 'undefined' && google.accounts) {
+      authTries++;
+      if(typeof google !== 'undefined' && google.accounts && google.accounts.id) {
         initGoogleAuth();
+      } else if(authTries < 30) {
+        setTimeout(tryInitAuth, 300);
       } else {
-        setTimeout(tryInitAuth, 200);
+        document.getElementById('login-error').textContent = 'Error cargando Google Sign-In. Recarga la página.';
+        document.getElementById('login-error').style.display = 'block';
       }
     }
-    tryInitAuth();
+    setTimeout(tryInitAuth, 500);
   } else {
-    // ── MODO LOCAL ──
+    // ── MODO LOCAL — ocultar login overlay inmediatamente
+    hideLoginScreen();
     if(!localStorage.getItem('ob_done')){
       render();
       showOnboarding();
@@ -7628,42 +7624,26 @@ function cargarDatosEjemplo(){
 </div>
 
 
-<!-- LOGIN OVERLAY (Cloud mode) -->
-<div id="login-overlay" style="display:none;position:fixed;inset:0;z-index:999;
-  background:var(--sidebar-bg);align-items:center;justify-content:center">
-  <div style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);
-    border-radius:20px;padding:40px;width:360px;max-width:95vw;text-align:center">
-    <div style="font-size:48px;margin-bottom:12px">💰</div>
-    <div id="login-app-name" style="font-family:var(--font-display);font-size:26px;
-      font-weight:700;color:#fff;margin-bottom:6px">gastos.</div>
-    <div style="font-size:13px;color:rgba(199,210,254,.6);margin-bottom:32px">
-      Control de gastos familiares
-    </div>
-    <!-- Google Sign-In button -->
-    <div id="g_id_signin" style="display:flex;justify-content:center;margin-bottom:12px;min-height:44px"></div>
-    <div style="font-size:11px;color:rgba(199,210,254,.4);margin-top:4px">
-      Si el botón no aparece, recarga la página
-    </div>
-    <div id="login-error" style="display:none;color:#f87171;font-size:12px;
-      margin-top:12px;padding:8px;background:rgba(244,63,94,.1);border-radius:6px"></div>
-    <div style="font-size:10px;color:rgba(199,210,254,.3);margin-top:20px">
-      Solo usuarios autorizados pueden acceder
-    </div>
-  </div>
+<!-- LOGIN OVERLAY -->
+<div id="login-overlay" style="display:none;position:fixed;inset:0;z-index:9999;
+  background:#1e1b4b;flex-direction:column;align-items:center;justify-content:center;font-family:sans-serif">
+  <div style="font-size:52px;margin-bottom:10px">💰</div>
+  <div style="font-size:28px;font-weight:700;color:#fff;margin-bottom:6px">gastos.</div>
+  <div style="font-size:14px;color:rgba(199,210,254,.6);margin-bottom:36px">Control de gastos familiares</div>
+  <div id="g_id_signin" style="margin-bottom:12px"></div>
+  <div id="login-error" style="color:#f87171;font-size:12px;margin-top:12px;display:none;
+    padding:10px 20px;background:rgba(244,63,94,.15);border-radius:8px;max-width:280px;text-align:center"></div>
+  <div style="font-size:10px;color:rgba(199,210,254,.25);margin-top:24px">Solo usuarios autorizados</div>
 </div>
 
-<!-- CLOUD LOADING -->
-<div id="cloud-loading" style="display:none;position:fixed;inset:0;z-index:998;
-  background:rgba(15,23,42,.7);align-items:center;justify-content:center;
-  backdrop-filter:blur(4px)">
-  <div style="text-align:center;color:#fff">
-    <div style="font-size:36px;margin-bottom:12px;animation:spin 1s linear infinite">⟳</div>
-    <div style="font-family:var(--font-sans);font-size:13px;color:rgba(199,210,254,.7)">
-      Cargando datos...
-    </div>
+<!-- LOADING -->
+<div id="cloud-loading" style="display:none;position:fixed;inset:0;z-index:9998;
+  background:rgba(15,23,42,.8);align-items:center;justify-content:center">
+  <div style="color:#fff;text-align:center;font-family:sans-serif">
+    <div style="font-size:40px;margin-bottom:10px">⏳</div>
+    <div>Cargando datos...</div>
   </div>
 </div>
-<style>@keyframes spin{to{transform:rotate(360deg)}}</style>
 
 <!-- SIDEBAR USER BADGE -->
 
